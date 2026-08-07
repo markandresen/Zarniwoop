@@ -1,0 +1,14 @@
+appId: com.zarniwoop.app
+productName: Zarniwoop
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+win:
+  target:
+    - nsis

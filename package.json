@@ -1,0 +1,31 @@
+{
+  "name": "zarniwoop",
+  "version": "0.1.0",
+  "description": "Zarniwoop — desktop workspace shell with AI companion",
+  "main": "out/main/index.js",
+  "author": "Zarniwoop",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "sql.js": "^1.13.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/node": "^22.16.5",
+    "electron": "^37.2.3",
+    "electron-vite": "^4.0.0",
+    "svelte": "^5.36.12",
+    "svelte-check": "^4.3.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

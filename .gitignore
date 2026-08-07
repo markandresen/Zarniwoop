@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+dist-electron/
+out/
+release/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Dropbox
+*Conflicted copy*
+*. droplive*
+.dropbox*
+.dropbox.attr
+
+# Logs / debug
+*.log
+npm-debug.log*
+
+# Electron
+*.local
+.electron-vite/

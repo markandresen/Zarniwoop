@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+:root {
+  --zw-bg: #0f1419;
+  --zw-panel: #161d27;
+  --zw-border: #2a3544;
+  --zw-text: #e8eef6;
+  --zw-muted: #8b9bb0;
+  --zw-accent: #3d9cf0;
+  --zw-accent-dim: #2563a8;
+  font-family: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  color: var(--zw-text);
+  background: var(--zw-bg);
+  color-scheme: dark;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
