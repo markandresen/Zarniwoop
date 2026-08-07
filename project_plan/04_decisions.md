@@ -14,7 +14,7 @@ Change these only deliberately; update this file in the same change as any confl
 | ADR-005 | Model policy | Multi-provider: major frontier + free/open tiers. **Free path is first choice** in routing and default UX; frontier is opt-in or escalate. |
 | ADR-006 | Default routing | Prefer OpenJarvis local when capable → else first configured free cloud route → frontier only if user selects, intent requires (e.g. live search / heavy agent), or free path fails and failover is allowed. |
 | ADR-007 | Local stack | OpenJarvis + SQLite (`sqlite-vec` / FTS5) + `safeStorage`. Local is the primary free/offline default when hardware allows. |
-| ADR-008 | Launch UX | Dual-pane: main browser + collapsible AI sidebar. Dashboard widgets are Phase 4, not first paint. |
+| ADR-008 | Launch UX | **Default = companion mode:** browser collapsed; only AI chat + tools visible; window **docked to the right**. User can expand to dual-pane (Show Browser). Dashboard widgets are Phase 4. |
 
 ## Resolved from earlier clarifying questions
 

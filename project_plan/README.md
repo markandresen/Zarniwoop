@@ -35,9 +35,9 @@ If two docs conflict, follow the higher item above. Update decisions before cont
 
 ## Launch UX (locked understanding)
 
-On launch the app is a **desktop dual-pane workspace shell**, not a dashboard-first home:
+On launch the app is a **right-docked AI companion** (not a full dual-pane workspace):
 
-- **Main pane:** embedded browser (`WebContentsView`).  
-- **Sidebar:** persistent, collapsible AI chat (streaming).  
-- **Docking:** OS companion (macOS overlay first, Windows AppBar next).  
-- **Dashboard widgets** (tasks, mail, notes): Phase 4, not first paint of MVP shell.
+- **Default:** browser collapsed — only AI chat + tools visible, docked to the **right** edge.  
+- **Expand:** “Show Browser” opens dual-pane (`WebContentsView` + AI).  
+- **Docking:** Windows AppBar (`SHAppBarMessage`) reserves work area; macOS overlay only (no OS work-area API).  
+- **Dashboard widgets** (tasks, mail, notes): Phase 4.

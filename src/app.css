@@ -1,16 +1,20 @@
 @import 'tailwindcss';
 
 :root {
-  --zw-bg: #0f1419;
-  --zw-panel: #161d27;
-  --zw-border: #2a3544;
+  --zw-bg: rgba(15, 20, 25, 0.28);
+  --zw-panel: rgba(22, 29, 39, 0.32);
+  --zw-chrome: rgba(18, 24, 32, 0.72);
+  --zw-solid: rgba(22, 29, 39, 0.92);
+  --zw-border: rgba(42, 53, 68, 0.65);
   --zw-text: #e8eef6;
   --zw-muted: #8b9bb0;
   --zw-accent: #3d9cf0;
   --zw-accent-dim: #2563a8;
+  --zw-bubble: rgba(28, 37, 49, 0.94);
+  --zw-bubble-user: rgba(26, 42, 61, 0.96);
   font-family: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
   color: var(--zw-text);
-  background: var(--zw-bg);
+  background: transparent;
   color-scheme: dark;
 }
 
@@ -19,6 +23,7 @@ body,
 #app {
   height: 100%;
   margin: 0;
+  background: transparent;
 }
 
 * {

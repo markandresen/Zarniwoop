@@ -31,10 +31,20 @@ const zarniwoopAPI = {
 
   getUrl: () => ipcRenderer.invoke('shell:get-url') as Promise<string>,
 
+  setBrowserCollapsed: (collapsed: boolean) =>
+    ipcRenderer.invoke('shell:set-browser-collapsed', collapsed),
+
+  getBrowserCollapsed: () =>
+    ipcRenderer.invoke('shell:get-browser-collapsed') as Promise<boolean>,
+
+  setChromeLayout: (layout: { toolbarHeight: number; rightChrome: number }) =>
+    ipcRenderer.invoke('shell:set-chrome-layout', layout),
+
   setSidebarCollapsed: (collapsed: boolean) =>
     ipcRenderer.invoke('shell:set-sidebar-collapsed', collapsed),
 
-  setSidebarWidth: (width: number) => ipcRenderer.invoke('shell:set-sidebar-width', width),
+  getSidebarCollapsed: () =>
+    ipcRenderer.invoke('shell:get-sidebar-collapsed') as Promise<boolean>,
 
   dock: (edge: DockEdge) => ipcRenderer.invoke('shell:dock', edge)
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
-  type Props = { onClose: () => void }
-  let { onClose }: Props = $props()
+  type Props = { onClose: () => void; onCollapse: () => void }
+  let { onClose, onCollapse }: Props = $props()
 
   let provider = $state('openrouter')
   let key = $state('')
@@ -30,7 +30,23 @@
 <div class="panel">
   <header class="head">
     <h1>Settings</h1>
-    <button type="button" class="link" onclick={onClose}>Back to chat</button>
+    <div class="head-actions">
+      <button type="button" class="link" onclick={onClose}>Back to chat</button>
+      <button
+        type="button"
+        class="collapse"
+        onclick={onCollapse}
+        title="Collapse chat panel"
+        aria-label="Collapse chat panel"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 2v12h6V6h-6zM9.5 12L13 9.5v5L9.5 12z"
+          />
+        </svg>
+      </button>
+    </div>
   </header>
 
   <section class="body">
@@ -88,8 +104,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.85rem 1rem;
+    gap: 0.5rem;
+    padding: 0.7rem 0.75rem 0.7rem 1rem;
     border-bottom: 1px solid var(--zw-border);
+    background: var(--zw-chrome);
+  }
+
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
   }
 
   h1 {
@@ -112,12 +136,30 @@
     padding: 0;
   }
 
+  .collapse {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--zw-accent-dim);
+    border-radius: 6px;
+    background: var(--zw-accent-dim);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .collapse:hover {
+    filter: brightness(1.12);
+  }
+
   .body {
     padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     overflow: auto;
+    background: var(--zw-solid);
   }
 
   label {
@@ -133,7 +175,7 @@
     height: 36px;
     border-radius: 6px;
     border: 1px solid var(--zw-border);
-    background: var(--zw-bg);
+    background: rgba(15, 20, 25, 0.9);
     color: var(--zw-text);
     padding: 0 0.65rem;
   }

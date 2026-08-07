@@ -49,9 +49,10 @@ Evaluates task intent, privacy level, latency need, and battery/thermal status (
 
 ### 1. Dual-pane UI & docked companion
 
-- **Main browser pane:** Electron `WebContentsView`; Chromium extension compatibility target.  
-- **Sidebar AI pane:** Persistent, collapsible chat; streaming tokens.  
-- **Docked OS mode:** Windows edge snap via `SHAppBarMessage` first (PC primary workstation); macOS persistent overlay next. Shared shell must run on both platforms.
+- **Default companion mode:** Browser collapsed; AI chat + tools fill a strip **docked to the right**.  
+- **Main browser pane (optional):** Electron `WebContentsView` when user expands (“Show Browser”); Chromium extension compatibility target.  
+- **Sidebar AI pane:** Default visible in companion mode; collapsible to an icon rail; streams tokens.  
+- **Docked OS mode:** Windows `SHAppBarMessage` AppBar reserves work area so other windows maximize/tile beside the strip (PC primary). macOS uses always-on-top overlay only — the OS does not expose work-area reservation to third-party apps. Shared shell on both platforms.
 
 ### 2. Hybrid AI router & power management
 

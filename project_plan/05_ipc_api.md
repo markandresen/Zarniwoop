@@ -39,6 +39,10 @@ export const zarniwoopAPI = {
 | `vault:save-key` | renderer → main | Persist provider key via `safeStorage` |
 | `memory:search` | renderer → main | Local SQLite vector / FTS5 search |
 | `cdp:execute-action` | renderer → main | DOM click / fill / extract |
+| `shell:set-browser-collapsed` | renderer → main | Companion mode (default `true`) vs dual-pane |
+| `shell:set-chrome-layout` | renderer → main | Toolbar height + right chrome width reserved from `WebContentsView` |
+| `shell:set-sidebar-collapsed` | renderer → main | Full UI vs icon-dock chip (window shrinks to restore icon) |
+| `shell:dock` | renderer → main | Dock edge (`right` default on launch) |
 
 ## Notes
 
