@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Icon } from './icons'
+  import StatusOrb from './StatusOrb.svelte'
+
   type Props = {
     browserCollapsed: boolean
     sidebarCollapsed: boolean
@@ -17,6 +20,8 @@
 
   let url = $state('https://example.com')
   let status = $state('')
+  /** Launch docks right (ADR-008); update when user picks a mode. */
+  let dockEdge = $state<'none' | 'left' | 'right'>('right')
 
   async function go(event?: Event): Promise<void> {
     event?.preventDefault()
@@ -32,146 +37,113 @@
 
   async function dock(edge: 'none' | 'left' | 'right'): Promise<void> {
     const result = await window.zarniwoop.dock(edge)
-    status = result?.note ?? (result?.ok ? `Docked: ${edge}` : 'Dock failed')
+    if (result?.ok) {
+      dockEdge = edge
+      status = result.note ?? `Docked: ${edge}`
+    } else {
+      status = result?.note ?? 'Dock failed'
+    }
   }
 </script>
 
-<header class="toolbar" class:compact={browserCollapsed}>
-  <div class="brand">Zarniwoop</div>
+<header class="toolbar" class:browser-open={!browserCollapsed}>
+  <div class="brand" title="Zarniwoop">
+    <span class="brand-name">Zarniwoop</span>
+    <span class="brand-mark" aria-hidden="true">Z</span>
+  </div>
+
+  <nav class="tools" aria-label="Workspace tools">
+    <button
+      type="button"
+      class="tool"
+      class:active={!browserCollapsed}
+      onclick={onToggleBrowser}
+      title={browserCollapsed ? 'Show browser' : 'Hide browser'}
+      aria-label={browserCollapsed ? 'Show browser' : 'Hide browser'}
+      aria-pressed={!browserCollapsed}
+    >
+      <span class="tool-icon">
+        <Icon name="Globe01" size={20} strokeWidth={1.75} />
+      </span>
+      <span class="tool-label">Browser</span>
+    </button>
+  </nav>
 
   {#if !browserCollapsed}
     <form class="nav" onsubmit={go}>
+      <span class="nav-globe" aria-hidden="true">
+        <Icon name="Globe01" size={14} strokeWidth={1.75} />
+      </span>
       <input
         class="url"
         type="text"
         bind:value={url}
         spellcheck="false"
         aria-label="Address"
-        placeholder="Enter URL"
+        placeholder="Navigate the web…"
       />
-      <!-- Hide browser sits beside the address field (not Go). -->
-      <button
-        type="button"
-        class="icon-btn"
-        onclick={onToggleBrowser}
-        title="Hide browser — back to chat"
-        aria-label="Hide browser — back to chat"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 2v12h6V6h-6zM9.5 12L13 9.5v5L9.5 12z"
-          />
-        </svg>
-      </button>
-      <button type="submit" class="icon-btn ghost" title="Load URL" aria-label="Load URL">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"
-          />
-        </svg>
+      <button type="submit" class="icon-btn" title="Load URL" aria-label="Load URL">
+        <Icon name="RefreshCw01" size={16} strokeWidth={1.75} />
       </button>
     </form>
+  {:else}
+    <p class="prompt">Open the wire globe — look outward.</p>
   {/if}
 
   <div class="actions">
+    <div class="action-group" role="group" aria-label="Docking">
+      <button
+        type="button"
+        class="icon-btn"
+        class:active={dockEdge === 'left'}
+        onclick={() => dock('left')}
+        title="Dock left"
+        aria-label="Dock left"
+        aria-pressed={dockEdge === 'left'}
+      >
+        <Icon name="LayoutLeft" size={16} strokeWidth={1.75} />
+      </button>
+      <button
+        type="button"
+        class="icon-btn"
+        class:active={dockEdge === 'right'}
+        onclick={() => dock('right')}
+        title="Dock right"
+        aria-label="Dock right"
+        aria-pressed={dockEdge === 'right'}
+      >
+        <Icon name="LayoutRight" size={16} strokeWidth={1.75} />
+      </button>
+      <button
+        type="button"
+        class="icon-btn"
+        class:active={dockEdge === 'none'}
+        onclick={() => dock('none')}
+        title="Float window"
+        aria-label="Float window"
+        aria-pressed={dockEdge === 'none'}
+      >
+        <Icon name="LayoutAlt01" size={16} strokeWidth={1.75} />
+      </button>
+    </div>
     <button
       type="button"
-      class="icon-btn ghost"
-      onclick={() => dock('right')}
-      title="Dock right"
-      aria-label="Dock right"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm12 2v10h6V7h-6z"
-        />
-      </svg>
-    </button>
-    <button
-      type="button"
-      class="icon-btn ghost"
-      onclick={() => dock('left')}
-      title="Dock left"
-      aria-label="Dock left"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2v10h6V7H3z"
-        />
-      </svg>
-    </button>
-    <button
-      type="button"
-      class="icon-btn ghost"
-      onclick={() => dock('none')}
-      title="Float window"
-      aria-label="Float window"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V5h14v14zm-2-9H7V8h10v2z"
-        />
-      </svg>
-    </button>
-    <button
-      type="button"
-      class="icon-btn ghost"
+      class="icon-btn"
       onclick={onOpenSettings}
       title="Settings"
       aria-label="Settings"
     >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.55-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.22l2.39-.96c.49.39 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.55 1.62-.94l2.39.96c.25.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"
-        />
-      </svg>
+      <Icon name="Settings01" size={16} strokeWidth={1.75} />
     </button>
-    {#if browserCollapsed}
-      <button
-        type="button"
-        class="icon-btn"
-        onclick={onToggleBrowser}
-        title="Show browser"
-        aria-label="Show browser"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 4v8h18V9H3zm14 2h2v2h-2v-2z"
-          />
-          <path fill="currentColor" d="M14 12l5-3v6l-5-3z" />
-        </svg>
-      </button>
-    {/if}
     <button
       type="button"
-      class="icon-btn"
-      class:ghost={sidebarCollapsed}
+      class="icon-btn orb-btn"
+      class:active={!sidebarCollapsed}
       onclick={onToggleSidebar}
       title={sidebarCollapsed ? 'Show chat panel' : 'Collapse chat panel'}
       aria-label={sidebarCollapsed ? 'Show chat panel' : 'Collapse chat panel'}
     >
-      {#if sidebarCollapsed}
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 2v12h6V6h-6zM8.5 12L5 9.5v5L8.5 12z"
-          />
-        </svg>
-      {:else}
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 2v12h6V6h-6zM9.5 12L13 9.5v5L9.5 12z"
-          />
-        </svg>
-      {/if}
+      <StatusOrb visual="work" size="icon" orbState="idle" />
     </button>
   </div>
 
@@ -182,94 +154,304 @@
 
 <style>
   .toolbar {
-    height: 48px;
+    --tb-h: 56px;
+    height: var(--tb-h);
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0 0.75rem;
-    border-bottom: 1px solid var(--zw-border);
-    background: var(--zw-chrome);
-    backdrop-filter: blur(12px);
+    gap: 0.85rem;
+    padding: 0 0.85rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--zw-copper) 18%, var(--zw-border));
+    background:
+      radial-gradient(120% 180% at 0% 0%, color-mix(in srgb, var(--zw-copper) 14%, transparent), transparent 55%),
+      linear-gradient(180deg, color-mix(in srgb, var(--zw-chrome) 88%, transparent) 0%, var(--zw-chrome) 100%);
+    backdrop-filter: blur(18px);
     position: relative;
     z-index: 3;
     flex-shrink: 0;
   }
 
-  .toolbar.compact .actions {
-    margin-left: auto;
+  .toolbar::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--zw-copper) 45%, transparent) 22%,
+      color-mix(in srgb, var(--zw-accent) 35%, transparent) 55%,
+      transparent 100%
+    );
+    pointer-events: none;
   }
 
   .brand {
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .brand-name {
+    font-family: var(--zw-display);
+    font-weight: 650;
+    letter-spacing: 0.01em;
     font-size: 0.95rem;
-    color: var(--zw-text);
+    color: #ffffff;
     white-space: nowrap;
+  }
+
+  .brand-mark {
+    display: none;
+    font-family: var(--zw-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  .tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.12rem;
+    min-width: 3.4rem;
+    height: 2.7rem;
+    padding: 0.2rem 0.45rem 0.28rem;
+    border: 1px solid transparent;
+    border-radius: 0.55rem;
+    background: transparent;
+    color: var(--zw-muted);
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .tool-icon {
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .tool-label {
+    font-family: var(--zw-ui);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .tool:hover {
+    color: var(--zw-text);
+    background: color-mix(in srgb, var(--zw-solid) 70%, transparent);
+    border-color: var(--zw-border);
+  }
+
+  .tool.active {
+    color: var(--zw-brand);
+    background: color-mix(in srgb, var(--zw-brand) 12%, transparent);
+    border-color: color-mix(in srgb, var(--zw-brand) 40%, transparent);
+  }
+
+  .tool:active {
+    transform: translateY(1px);
+  }
+
+  .prompt {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--zw-ui);
+    font-size: 0.78rem;
+    font-style: italic;
+    color: color-mix(in srgb, var(--zw-muted) 85%, transparent);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .nav {
     display: flex;
     flex: 1;
-    gap: 0.4rem;
+    gap: 0.35rem;
     min-width: 0;
     align-items: center;
+    height: 2.15rem;
+    padding: 0 0.35rem 0 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--zw-border);
+    background: color-mix(in srgb, var(--zw-solid) 88%, #0a0e14);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+  }
+
+  .nav:focus-within {
+    border-color: color-mix(in srgb, var(--zw-accent) 55%, var(--zw-border));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--zw-accent) 25%, transparent);
+  }
+
+  .nav-globe {
+    display: grid;
+    place-items: center;
+    color: var(--zw-brand);
+    flex-shrink: 0;
+    opacity: 0.9;
   }
 
   .url {
     flex: 1;
     min-width: 0;
-    height: 32px;
-    border-radius: 6px;
-    border: 1px solid var(--zw-border);
-    background: var(--zw-solid);
+    height: 100%;
+    border: none;
+    background: transparent;
     color: var(--zw-text);
-    padding: 0 0.65rem;
+    padding: 0 0.25rem;
+    font-family: var(--zw-mono);
+    font-size: 0.78rem;
   }
 
   .url:focus {
-    outline: 1px solid var(--zw-accent);
-    border-color: var(--zw-accent);
+    outline: none;
+  }
+
+  .url::placeholder {
+    color: var(--zw-muted);
+    font-family: var(--zw-ui);
+    font-style: italic;
   }
 
   .actions {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.35rem;
     flex-shrink: 0;
-    justify-content: flex-end;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  .action-group {
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.15rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--zw-border);
+    background: color-mix(in srgb, var(--zw-solid) 55%, transparent);
   }
 
   .icon-btn {
-    width: 32px;
-    height: 32px;
+    width: 1.85rem;
+    height: 1.85rem;
     padding: 0;
     display: grid;
     place-items: center;
-    border-radius: 6px;
-    border: 1px solid var(--zw-accent-dim);
-    background: var(--zw-accent-dim);
-    color: white;
+    border-radius: 0.4rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--zw-muted);
     cursor: pointer;
     flex-shrink: 0;
-  }
-
-  .icon-btn.ghost {
-    background: transparent;
-    border-color: var(--zw-border);
-    color: var(--zw-muted);
+    transition:
+      color 140ms ease,
+      background 140ms ease,
+      border-color 140ms ease;
   }
 
   .icon-btn:hover {
-    filter: brightness(1.1);
     color: var(--zw-text);
+    background: color-mix(in srgb, var(--zw-solid) 80%, transparent);
+    border-color: var(--zw-border);
+  }
+
+  .icon-btn.active {
+    color: var(--zw-brand);
+    background: color-mix(in srgb, var(--zw-brand) 18%, transparent);
+    border-color: color-mix(in srgb, var(--zw-brand) 45%, transparent);
+  }
+
+  .action-group .icon-btn.active {
+    color: var(--zw-brand);
+    background: color-mix(in srgb, var(--zw-brand) 22%, transparent);
+    border-color: color-mix(in srgb, var(--zw-brand) 50%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zw-brand) 25%, transparent);
+  }
+
+  .nav .icon-btn {
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 999px;
+  }
+
+  .orb-btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.45rem;
+    background: #0b0d10;
+    border-color: var(--zw-border);
+    overflow: hidden;
+  }
+
+  .orb-btn:hover,
+  .orb-btn.active {
+    color: inherit;
+    background: #0b0d10;
+    border-color: color-mix(in srgb, var(--zw-brand) 55%, var(--zw-border));
   }
 
   .status {
     position: absolute;
-    left: 0.75rem;
+    left: 0.85rem;
     bottom: -1.35rem;
     margin: 0;
     font-size: 0.7rem;
     color: var(--zw-muted);
     pointer-events: none;
+  }
+
+  /* Companion strip is ~400px — only collapse brand when truly cramped. */
+  @media (max-width: 300px) {
+    .brand-name {
+      display: none;
+    }
+
+    .brand-mark {
+      display: inline;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .prompt {
+      display: none;
+    }
+
+    .tool-label {
+      display: none;
+    }
+
+    .tool {
+      min-width: 2.4rem;
+      height: 2.4rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tool,
+    .icon-btn {
+      transition: none;
+    }
   }
 </style>

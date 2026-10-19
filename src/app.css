@@ -1,18 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500&family=Sora:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap');
 @import 'tailwindcss';
 
 :root {
-  --zw-bg: rgba(15, 20, 25, 0.28);
-  --zw-panel: rgba(22, 29, 39, 0.32);
-  --zw-chrome: rgba(18, 24, 32, 0.72);
-  --zw-solid: rgba(22, 29, 39, 0.92);
-  --zw-border: rgba(42, 53, 68, 0.65);
+  /* Glass surfaces — acrylic/vibrancy shows through; controls stay denser. */
+  --zw-bg: rgba(15, 20, 25, 0.38);
+  --zw-panel: rgba(22, 29, 39, 0.45);
+  --zw-chrome: rgba(18, 24, 32, 0.5);
+  --zw-solid: rgba(22, 29, 39, 0.82);
+  --zw-border: rgba(42, 53, 68, 0.55);
   --zw-text: #e8eef6;
   --zw-muted: #8b9bb0;
   --zw-accent: #3d9cf0;
   --zw-accent-dim: #2563a8;
-  --zw-bubble: rgba(28, 37, 49, 0.94);
-  --zw-bubble-user: rgba(26, 42, 61, 0.96);
-  font-family: 'Segoe UI', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  /* Official orb violet — user can override in Settings */
+  --zw-brand: #a878ff;
+  --zw-brand-dim: #7a56b8;
+  --zw-brand-hue-shift: 0deg;
+  --zw-copper: var(--zw-brand);
+  --zw-bubble: rgba(28, 37, 49, 0.72);
+  --zw-bubble-user: rgba(26, 42, 61, 0.78);
+  --zw-display: 'Sora', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --zw-ui: 'Source Sans 3', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --zw-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: var(--zw-ui);
   color: var(--zw-text);
   background: transparent;
   color-scheme: dark;
@@ -24,6 +34,14 @@ body,
   height: 100%;
   margin: 0;
   background: transparent;
+}
+
+/* Separate icon-dock window — fully clear around the chip. */
+html.icon-dock-mode,
+html.icon-dock-mode body,
+html.icon-dock-mode #app {
+  background: transparent;
+  overflow: hidden;
 }
 
 * {

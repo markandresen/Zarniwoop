@@ -28,3 +28,11 @@ Primary workstation target: **Windows**. macOS is also supported.
 | `npm run dev` | Electron + Vite dev |
 | `npm run build` | Production build to `out/` |
 | `npm run typecheck` | Svelte / TS check |
+
+## Security
+
+API keys are stored locally, encrypted with the OS keychain via Electron `safeStorage` — never in this repo. See [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+## License
+
+[MIT](LICENSE)

@@ -34,3 +34,18 @@ npm-debug.log*
 # Electron
 *.local
 .electron-vite/
+
+# Vite temp config bundles
+electron.vite.config.*.mjs
+
+# Local tooling / nested repos
+.gh.zip
+.gh-extract/
+OpenJarvis/
+
+# Private local-only modules — not for public repo
+src/lib/orbs/
+src/lib/aiSetup.ts
+src/lib/formatAiError.ts
+scripts/port-jarvis-orbs.mjs
+project_plan/24_Jarvis_Orb_Visuals.md

@@ -1,23 +1,31 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import { join } from 'node:path'
 import { registerVaultIpc } from './vault'
-import { initDatabase, registerMemoryIpc } from './db'
+import { initDatabase, registerMemoryIpc, registerSettingsIpc } from './db'
 import {
   applyDocking,
-  applyIconDock,
   releaseDockReservation,
+  releaseDockReservationForce,
   type DockEdge
 } from './docking'
 import { BrowserViewManager } from './browserView'
-import { registerAiStubIpc } from './aiStub'
+import { lockAppWindowNavigation } from './navGuard'
+import { registerAiIpc } from './ai/registerAiIpc'
 import {
-  iconDockBounds,
-  ICON_DOCK_SIZE,
   slideBrowserIn,
   slideBrowserOut,
-  slideToIconDock,
   WORKSPACE_MIN_WIDTH
 } from './windowMotion'
+import {
+  destroyIconDock,
+  hideIconDock,
+  showIconDock,
+  getIconDockBounds,
+  moveIconDockByDelta,
+  moveIconDockFollowCursor,
+  moveIconDockToScreenY,
+  persistIconDockY
+} from './iconDockWindow'
 
 const isDev = !app.isPackaged
 const COMPANION_WIDTH = 400
@@ -32,14 +40,27 @@ let restoreBrowserOnExpand = false
 let modeTransition: Promise<void> = Promise.resolve()
 
 function createWindow(): void {
+  // Seed right-edge using full monitor bounds (not workArea — AppBar shrinks that).
+  const primary = screen.getPrimaryDisplay()
+  const seedWidth = Math.min(COMPANION_WIDTH, Math.floor(primary.bounds.width * 0.32))
+  const seedBounds = {
+    x: primary.bounds.x + primary.bounds.width - seedWidth,
+    y: primary.workArea.y,
+    width: seedWidth,
+    height: primary.workArea.height
+  }
+
   mainWindow = new BrowserWindow({
-    width: COMPANION_WIDTH,
-    height: 900,
+    ...seedBounds,
     minWidth: COMPANION_MIN,
     minHeight: 480,
     title: 'Zarniwoop',
+    // Transparent + acrylic: see-through chrome. Safe now that icon-dock is a
+    // separate window (main never shrinks to 64×64).
     transparent: true,
     backgroundColor: '#00000000',
+    ...(process.platform === 'win32' ? { backgroundMaterial: 'acrylic' as const } : {}),
+    frame: false,
     hasShadow: true,
     show: false,
     webPreferences: {
@@ -50,22 +71,42 @@ function createWindow(): void {
     }
   })
 
+  if (process.platform === 'darwin') {
+    try {
+      mainWindow.setVibrancy('under-window')
+    } catch (err) {
+      console.warn('[zarniwoop] setVibrancy failed', err)
+    }
+  } else if (process.platform === 'win32') {
+    try {
+      mainWindow.setBackgroundMaterial('acrylic')
+    } catch (err) {
+      console.warn('[zarniwoop] setBackgroundMaterial failed', err)
+    }
+  }
+
   browserViews = new BrowserViewManager(mainWindow)
   browserViews.setBrowserCollapsed(true)
 
-  // Default: AI companion strip docked to the right
-  applyDocking(mainWindow, 'right')
-
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) return
-    applyDocking(mainWindow, 'right')
     mainWindow.show()
+    try {
+      const dock = applyDocking(mainWindow, 'right')
+      const b = mainWindow.getBounds()
+      const mon = screen.getDisplayMatching(b)
+      console.log(
+        `[zarniwoop] dock mode=${dock.mode} reserved=${Boolean(dock.reserved)} edge=${dock.edge}` +
+          ` bounds=${b.x},${b.y} ${b.width}x${b.height}` +
+          ` monitor=${mon.bounds.width}x${mon.bounds.height} sf=${mon.scaleFactor}` +
+          ` work=${mon.workArea.width}x${mon.workArea.height}`
+      )
+    } catch (err) {
+      console.error('[zarniwoop] dock on show failed', err)
+    }
   })
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  lockAppWindowNavigation(mainWindow)
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -78,6 +119,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('closed', () => {
+    destroyIconDock()
     browserViews?.dispose()
     browserViews = null
     mainWindow = null
@@ -146,25 +188,31 @@ async function setSidebarCollapsedMode(collapsed: boolean): Promise<void> {
   if (collapsed === sidebarCollapsed) return
 
   if (collapsed) {
-    // Collapse everything to a single restore chip.
+    // Hide opaque main; float a separate transparent orb chip.
     restoreBrowserOnExpand = !browserCollapsed
     sidebarCollapsed = true
     browserViews?.setBrowserCollapsed(true)
     browserViews?.setChromeLayout({ rightChrome: 0 })
     releaseDockReservation(win)
     setTrafficLights(win, false)
-    win.setMinimumSize(ICON_DOCK_SIZE, ICON_DOCK_SIZE)
-    await slideToIconDock(win)
+    // Keep main at companion size while hidden — never shrink it to 64×64.
+    win.setMinimumSize(COMPANION_MIN, 480)
+    await slideBrowserIn(win)
     if (mainWindow !== win || win.isDestroyed()) return
-    applyIconDock(win, iconDockBounds(win))
+    showIconDock(win)
+    win.hide()
+    broadcastSidebarCollapsed()
     return
   }
 
-  // Expand chip back to docked chat (and browser workspace if that was open).
+  // Expand: kill chip, show main again at full companion / workspace size.
   sidebarCollapsed = false
+  hideIconDock()
   setTrafficLights(win, true)
   win.setMinimumSize(COMPANION_MIN, 480)
   win.setResizable(true)
+  win.show()
+  broadcastSidebarCollapsed()
 
   if (restoreBrowserOnExpand) {
     restoreBrowserOnExpand = false
@@ -185,6 +233,12 @@ async function setSidebarCollapsedMode(collapsed: boolean): Promise<void> {
   await slideBrowserIn(win)
   if (mainWindow !== win || win.isDestroyed()) return
   applyDocking(win, 'right')
+}
+
+function broadcastSidebarCollapsed(): void {
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) w.webContents.send('shell:sidebar-collapsed', sidebarCollapsed)
+  }
 }
 
 function registerShellIpc(): void {
@@ -216,6 +270,22 @@ function registerShellIpc(): void {
 
   ipcMain.handle('shell:get-sidebar-collapsed', () => sidebarCollapsed)
 
+  ipcMain.handle('shell:get-icon-dock-bounds', () => getIconDockBounds())
+
+  ipcMain.handle('shell:move-icon-dock-y', (_event, screenY: number) => {
+    return moveIconDockToScreenY(Number(screenY))
+  })
+
+  ipcMain.handle('shell:move-icon-dock-dy', (_event, dy: number) => {
+    return moveIconDockByDelta(Number(dy))
+  })
+
+  ipcMain.handle('shell:move-icon-dock-follow', (_event, grabOffsetY: number) => {
+    return moveIconDockFollowCursor(Number(grabOffsetY))
+  })
+
+  ipcMain.handle('shell:persist-icon-dock-y', () => persistIconDockY())
+
   ipcMain.handle('shell:navigate', async (_event, url: string) => {
     return browserViews?.navigate(url)
   })
@@ -229,13 +299,49 @@ function registerShellIpc(): void {
     if (sidebarCollapsed) return { ok: false, reason: 'icon-dock' }
     return applyDocking(mainWindow, edge)
   })
+
+  ipcMain.handle('shell:open-external', async (_event, url: string) => {
+    const raw = String(url ?? '').trim()
+    if (!/^https?:\/\//i.test(raw)) {
+      return { ok: false, error: 'Only http(s) links allowed' }
+    }
+    await shell.openExternal(raw)
+    return { ok: true }
+  })
+
+  ipcMain.handle('shell:quit', () => {
+    // Quit after the IPC reply — sync app.quit() inside a handler can no-op.
+    setImmediate(() => {
+      try {
+        destroyIconDock()
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          releaseDockReservation(mainWindow)
+        }
+        releaseDockReservationForce()
+      } catch {
+        /* ignore */
+      }
+      for (const w of BrowserWindow.getAllWindows()) {
+        if (!w.isDestroyed()) w.destroy()
+      }
+      app.exit(0)
+    })
+    return { ok: true }
+  })
 }
 
 app.whenReady().then(async () => {
+  // Clear ghost AppBar inset left by a prior force-killed / crashed session.
+  releaseDockReservationForce()
   await initDatabase()
   registerVaultIpc()
   registerMemoryIpc()
-  registerAiStubIpc()
+  registerSettingsIpc()
+  registerAiIpc()
   registerShellIpc()
   createWindow()
 
@@ -245,7 +351,13 @@ app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  destroyIconDock()
   if (mainWindow && !mainWindow.isDestroyed()) releaseDockReservation(mainWindow)
+  releaseDockReservationForce()
+})
+
+app.on('will-quit', () => {
+  releaseDockReservationForce()
 })
 
 app.on('window-all-closed', () => {

@@ -1,10 +1,18 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import Toolbar from './lib/Toolbar.svelte'
   import AiSidebar from './lib/AiSidebar.svelte'
   import SettingsPanel from './lib/SettingsPanel.svelte'
+  import StatusOrb from './lib/StatusOrb.svelte'
+  import {
+    applyBrandTheme,
+    BRAND_COLOR_SETTING_KEY,
+    DEFAULT_BRAND_COLOR
+  } from './lib/brandTheme'
 
   const SIDEBAR_DEFAULT = 380
-  const TOOLBAR_HEIGHT = 48
+  const TOOLBAR_HEIGHT = 56
+  const isIconDockShell = new URLSearchParams(window.location.search).has('iconDock')
 
   /** Default: companion mode — browser collapsed, AI + tools only, docked right. */
   let browserCollapsed = $state(true)
@@ -13,18 +21,43 @@
   let showSettings = $state(false)
   let dragging = $state(false)
 
+  onMount(() => {
+    applyBrandTheme(DEFAULT_BRAND_COLOR)
+    void window.zarniwoop.getSetting(BRAND_COLOR_SETTING_KEY).then((value) => {
+      applyBrandTheme(value ?? DEFAULT_BRAND_COLOR)
+    })
+    const offBrand = window.zarniwoop.onSettingChanged(({ key, value }) => {
+      if (key === BRAND_COLOR_SETTING_KEY) applyBrandTheme(value)
+    })
+
+    if (isIconDockShell) {
+      document.documentElement.classList.add('icon-dock-mode')
+      return () => {
+        offBrand()
+      }
+    }
+    const offSidebar = window.zarniwoop.onSidebarCollapsed((collapsed) => {
+      sidebarCollapsed = collapsed
+    })
+    return () => {
+      offBrand()
+      offSidebar()
+    }
+  })
+
   $effect(() => {
-    // While icon-docked, main owns window + browser visibility.
-    if (sidebarCollapsed) return
+    if (isIconDockShell || sidebarCollapsed) return
     void window.zarniwoop.setBrowserCollapsed(browserCollapsed)
   })
 
   $effect(() => {
-    if (sidebarCollapsed || browserCollapsed) {
-      void window.zarniwoop.setChromeLayout({
-        toolbarHeight: TOOLBAR_HEIGHT,
-        rightChrome: 0
-      })
+    if (isIconDockShell || sidebarCollapsed || browserCollapsed) {
+      if (!isIconDockShell) {
+        void window.zarniwoop.setChromeLayout({
+          toolbarHeight: TOOLBAR_HEIGHT,
+          rightChrome: 0
+        })
+      }
       return
     }
     void window.zarniwoop.setChromeLayout({
@@ -40,11 +73,64 @@
 
   async function toggleSidebar(): Promise<void> {
     const next = !sidebarCollapsed
-    sidebarCollapsed = next
     const result = await window.zarniwoop.setSidebarCollapsed(next)
-    if (!next && result && typeof result.browserCollapsed === 'boolean') {
+    sidebarCollapsed = Boolean(result?.sidebarCollapsed ?? next)
+    if (!sidebarCollapsed && result && typeof result.browserCollapsed === 'boolean') {
       browserCollapsed = result.browserCollapsed
     }
+  }
+
+  async function openFromIconDock(): Promise<void> {
+    await window.zarniwoop.setSidebarCollapsed(false)
+  }
+
+  function onIconDockContextMenu(event: MouseEvent): void {
+    event.preventDefault()
+    const ok = window.confirm('Quit Zarniwoop?')
+    if (ok) void window.zarniwoop.quit()
+  }
+
+  /** Vertical slide: click = open, drag = move + persist. */
+  let dockDrag = $state(false)
+  let dockMoved = $state(false)
+  let startScreenY = 0
+  let grabOffsetY = 0
+
+  function onIconDockPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const target = event.currentTarget as HTMLElement
+    target.setPointerCapture(event.pointerId)
+    dockDrag = true
+    dockMoved = false
+    startScreenY = event.screenY
+    // Offset of cursor inside the chip window (DIP).
+    grabOffsetY = event.clientY
+  }
+
+  function onIconDockPointerMove(event: PointerEvent): void {
+    if (!dockDrag) return
+    if (!dockMoved) {
+      if (Math.abs(event.screenY - startScreenY) < 4) return
+      dockMoved = true
+    }
+    void window.zarniwoop.moveIconDockFollow(grabOffsetY)
+  }
+
+  function onIconDockPointerUp(event: PointerEvent): void {
+    if (!dockDrag) return
+    const target = event.currentTarget as HTMLElement
+    if (target.hasPointerCapture(event.pointerId)) {
+      target.releasePointerCapture(event.pointerId)
+    }
+    const moved = dockMoved
+    dockDrag = false
+    dockMoved = false
+    if (moved) {
+      void window.zarniwoop.persistIconDockY()
+      return
+    }
+    void openFromIconDock()
   }
 
   function onResizePointerDown(event: PointerEvent): void {
@@ -71,29 +157,29 @@
   }
 </script>
 
-{#if sidebarCollapsed}
-  <!-- Icon dock: nothing but the restore control. -->
+{#if isIconDockShell}
+  <!-- Separate transparent window — only the restore chip. -->
   <div class="icon-dock">
     <button
       type="button"
       class="icon-dock-btn"
-      onclick={toggleSidebar}
-      title="Show Zarniwoop chat"
-      aria-label="Show Zarniwoop chat"
+      class:dragging={dockDrag && dockMoved}
+      onpointerdown={onIconDockPointerDown}
+      onpointermove={onIconDockPointerMove}
+      onpointerup={onIconDockPointerUp}
+      onpointercancel={onIconDockPointerUp}
+      title="Open Zarniwoop — drag to move · right-click to quit"
+      aria-label="Open Zarniwoop"
+      oncontextmenu={onIconDockContextMenu}
     >
-      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 5v2h10V9H7zm0 4v2h7v-2H7z"
-        />
-      </svg>
+      <StatusOrb visual="zarniwoop" size="icon" orbState="idle" />
     </button>
   </div>
 {:else}
   <div class="shell" class:companion={browserCollapsed} class:dragging>
     <Toolbar
       {browserCollapsed}
-      sidebarCollapsed={false}
+      {sidebarCollapsed}
       onToggleBrowser={toggleBrowser}
       onToggleSidebar={toggleSidebar}
       onOpenSettings={() => (showSettings = !showSettings)}
@@ -141,25 +227,42 @@
     display: grid;
     place-items: center;
     background: transparent;
-    -webkit-app-region: drag;
   }
 
+  /* 14px plate on transparent window — no OS square behind. */
   .icon-dock-btn {
-    width: 52px;
-    height: 52px;
-    border: none;
+    width: 56px;
+    height: 56px;
+    border: 1px solid color-mix(in srgb, var(--zw-brand) 35%, var(--zw-border));
     border-radius: 14px;
-    background: var(--zw-accent-dim);
+    background: #0b0d10;
     color: #fff;
     display: grid;
     place-items: center;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-    -webkit-app-region: no-drag;
+    cursor: grab;
+    touch-action: none;
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.45),
+      0 1px 3px rgba(0, 0, 0, 0.35);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .icon-dock-btn.dragging {
+    cursor: grabbing;
   }
 
   .icon-dock-btn:hover {
-    filter: brightness(1.12);
+    border-color: color-mix(in srgb, var(--zw-brand) 60%, var(--zw-border));
+    filter: brightness(1.08);
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.5),
+      0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  .icon-dock-btn :global(.orb),
+  .icon-dock-btn :global(canvas) {
+    border-radius: 10px;
   }
 
   .shell {
@@ -167,6 +270,7 @@
     flex-direction: column;
     height: 100%;
     background: var(--zw-bg);
+    backdrop-filter: blur(2px);
   }
 
   .workspace {

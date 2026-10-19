@@ -18,7 +18,7 @@ It acts as an intelligent top-level operating frame: zero-latency, privacy-first
 
 | Layer | Choice |
 | --- | --- |
-| Desktop shell & UI | Electron + Svelte 5 + Tailwind CSS (Vite) |
+| Desktop shell & UI | Electron + Svelte 5 + Tailwind CSS (Vite); icons = Untitled UI Icons (line) |
 | Local intelligence | OpenJarvis (on-device models, VRAM probing, SQLite vector memory, power profiling) |
 | Cloud gateway | Node in-process OpenAI-compatible router (LiteLLM pattern; not Python sidecar) |
 | Models | Free-first (local + free cloud tiers); frontier BYOK: xAI Grok, Anthropic Claude, OpenAI, Google Gemini |

@@ -13,8 +13,9 @@ Change these only deliberately; update this file in the same change as any confl
 | ADR-004 | Cloud gateway | Node in-process OpenAI-compatible router in Electron main (LiteLLM *pattern*). **Not** a Python LiteLLM sidecar. |
 | ADR-005 | Model policy | Multi-provider: major frontier + free/open tiers. **Free path is first choice** in routing and default UX; frontier is opt-in or escalate. |
 | ADR-006 | Default routing | Prefer OpenJarvis local when capable → else first configured free cloud route → frontier only if user selects, intent requires (e.g. live search / heavy agent), or free path fails and failover is allowed. |
-| ADR-007 | Local stack | OpenJarvis + SQLite (`sqlite-vec` / FTS5) + `safeStorage`. Local is the primary free/offline default when hardware allows. |
+| ADR-007 | Local stack | OpenJarvis/Ollama via HTTP from main (`:11434` / optional `:8000`) + SQLite (`sqlite-vec` / FTS5) + `safeStorage`. Local is the primary free/offline default when hardware allows. Do not bundle Python OpenJarvis inside Electron. |
 | ADR-008 | Launch UX | **Default = companion mode:** browser collapsed; only AI chat + tools visible; window **docked to the right**. User can expand to dual-pane (Show Browser). Dashboard widgets are Phase 4. |
+| ADR-010 | Icon set | **Untitled UI Icons** ([untitledui.com](https://www.untitledui.com)) — free **line** style via `@untitledui/icons` (MIT). Official npm exports React components; Zarniwoop is **Svelte 5**, so UI uses generated SVG path wrappers under `src/lib/icons/` (no React runtime). Prefer named Untitled icons over ad-hoc SVGs. PRO styles (solid/duocolor/duotone) only if a paid license is added later. |
 
 ## Resolved from earlier clarifying questions
 

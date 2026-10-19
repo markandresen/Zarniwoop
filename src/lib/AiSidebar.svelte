@@ -1,5 +1,10 @@
 <script lang="ts">
-  type Msg = { role: 'user' | 'assistant'; text: string }
+  import { onMount } from 'svelte'
+  import StatusOrb from './StatusOrb.svelte'
+  import AiSetupPanel from './AiSetupPanel.svelte'
+  import { formatAiError, routeLabel } from './aiErrors'
+
+  type Msg = { role: 'user' | 'assistant'; text: string; streaming?: boolean }
   type Props = { onCollapse: () => void }
 
   let { onCollapse }: Props = $props()
@@ -7,29 +12,108 @@
   let messages = $state<Msg[]>([
     {
       role: 'assistant',
-      text: 'Zarniwoop sidebar ready. Free-first routing lands in Phase 2 — for now this is a local stub.'
+      text: 'Hi — ask me anything. If AI is not connected yet, tap Set up AI (about 2 minutes).'
     }
   ])
   let draft = $state('')
   let busy = $state(false)
+  let routeBadge = $state('Auto')
+  let activeRequestId = $state<string | null>(null)
+  let aiReady = $state(false)
+  let showSetup = $state(false)
+  let showBanner = $state(false)
+
+  async function refreshReady(): Promise<void> {
+    const readyRes = await window.zarniwoop.getAiReadiness()
+    aiReady = Boolean(readyRes?.ready)
+    showBanner = !aiReady
+  }
+
+  onMount(() => {
+    void refreshReady()
+
+    const offChunk = window.zarniwoop.onAiStreamChunk((payload) => {
+      if (!activeRequestId || payload.requestId !== activeRequestId) return
+      const last = messages[messages.length - 1]
+      if (!last || last.role !== 'assistant' || !last.streaming) return
+      messages = [
+        ...messages.slice(0, -1),
+        { role: 'assistant', text: last.text + payload.delta, streaming: true }
+      ]
+    })
+
+    const offEnd = window.zarniwoop.onAiStreamEnd((payload) => {
+      if (!activeRequestId || payload.requestId !== activeRequestId) return
+      const last = messages[messages.length - 1]
+      if (last?.role === 'assistant' && last.streaming) {
+        const text = payload.ok
+          ? last.text || '(empty reply)'
+          : last.text
+            ? `${last.text}\n\n${formatAiError(payload.error)}`
+            : formatAiError(payload.error)
+        messages = [...messages.slice(0, -1), { role: 'assistant', text }]
+      } else if (!payload.ok) {
+        messages = [...messages, { role: 'assistant', text: formatAiError(payload.error) }]
+      }
+      if (payload.ok) routeBadge = routeLabel(payload.routedTo)
+      activeRequestId = null
+      busy = false
+    })
+
+    return () => {
+      offChunk()
+      offEnd()
+    }
+  })
 
   async function send(): Promise<void> {
     const prompt = draft.trim()
     if (!prompt || busy) return
+
+    if (!aiReady) {
+      messages = [
+        ...messages,
+        { role: 'user', text: prompt },
+        {
+          role: 'assistant',
+          text: 'AI is not connected yet. Tap Set up AI above — about 2 minutes — then try again.'
+        }
+      ]
+      draft = ''
+      showBanner = true
+      return
+    }
+
     messages = [...messages, { role: 'user', text: prompt }]
     draft = ''
     busy = true
+    messages = [...messages, { role: 'assistant', text: '', streaming: true }]
+
     try {
-      const result = await window.zarniwoop.sendPrompt({ prompt, intent: 'local' })
-      messages = [
-        ...messages,
-        { role: 'assistant', text: result?.reply ?? 'No reply from stub.' }
-      ]
+      const result = await window.zarniwoop.sendPrompt({
+        prompt,
+        intent: 'fast',
+        model: null
+      })
+      if (!result?.ok || !result.requestId) {
+        messages = [
+          ...messages.slice(0, -1),
+          { role: 'assistant', text: formatAiError(result?.error ?? 'send failed') }
+        ]
+        busy = false
+        return
+      }
+      activeRequestId = result.requestId
+      routeBadge = routeLabel(result.routedTo)
     } catch (err) {
-      messages = [...messages, { role: 'assistant', text: `Error: ${String(err)}` }]
-    } finally {
+      messages = [...messages.slice(0, -1), { role: 'assistant', text: formatAiError(err) }]
       busy = false
     }
+  }
+
+  async function abort(): Promise<void> {
+    if (!activeRequestId) return
+    await window.zarniwoop.abortPrompt(activeRequestId)
   }
 
   function onKey(event: KeyboardEvent): void {
@@ -38,13 +122,27 @@
       void send()
     }
   }
+
+  async function onSetupDone(): Promise<void> {
+    showSetup = false
+    await refreshReady()
+    messages = [
+      ...messages,
+      { role: 'assistant', text: 'You are connected. Ask me anything.' }
+    ]
+  }
+
+  async function onSetupSkip(): Promise<void> {
+    showSetup = false
+    await refreshReady()
+  }
 </script>
 
 <div class="panel">
   <header class="head">
     <div class="title-row">
-      <h1>AI</h1>
-      <span class="badge">free-first · stub</span>
+      <h1>Chat</h1>
+      <span class="badge">{routeBadge}</span>
     </div>
     <button
       type="button"
@@ -53,40 +151,54 @@
       title="Collapse chat panel"
       aria-label="Collapse chat panel"
     >
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 2v12h6V6h-6zM9.5 12L13 9.5v5L9.5 12z"
-        />
-      </svg>
+      <StatusOrb visual="work" size="icon" orbState={busy ? 'busy' : 'idle'} />
     </button>
   </header>
 
-  <div class="thread" role="log" aria-live="polite">
-    {#each messages as msg}
-      <div class="bubble" class:user={msg.role === 'user'}>
-        <span class="role">{msg.role === 'user' ? 'You' : 'Zarniwoop'}</span>
-        <p>{msg.text}</p>
+  {#if showSetup}
+    <AiSetupPanel onDone={() => void onSetupDone()} onSkip={() => void onSetupSkip()} />
+  {:else}
+    {#if showBanner}
+      <div class="banner" role="status">
+        <p>Optional: connect AI for answers. Setup takes about 2 minutes when you are ready.</p>
+        <button type="button" class="setup-btn" onclick={() => (showSetup = true)}>Set up AI</button>
       </div>
-    {/each}
-  </div>
+    {/if}
 
-  <form
-    class="composer"
-    onsubmit={(e) => {
-      e.preventDefault()
-      void send()
-    }}
-  >
-    <textarea
-      bind:value={draft}
-      onkeydown={onKey}
-      rows="3"
-      placeholder="Ask Zarniwoop…"
-      disabled={busy}
-    ></textarea>
-    <button type="submit" disabled={busy || !draft.trim()}>Send</button>
-  </form>
+    <div class="thread" role="log" aria-live="polite">
+      {#each messages as msg}
+        <div class="bubble" class:user={msg.role === 'user'} class:streaming={msg.streaming}>
+          <span class="role">{msg.role === 'user' ? 'You' : 'Zarniwoop'}</span>
+          <p>{msg.text}{#if msg.streaming && !msg.text}<span class="cursor">▍</span>{/if}</p>
+        </div>
+      {/each}
+    </div>
+
+    <form
+      class="composer"
+      onsubmit={(e) => {
+        e.preventDefault()
+        void send()
+      }}
+    >
+      <textarea
+        bind:value={draft}
+        onkeydown={onKey}
+        rows="3"
+        placeholder="Ask Zarniwoop…"
+        disabled={busy}
+      ></textarea>
+      <div class="actions">
+        {#if !aiReady}
+          <button type="button" class="ghost" onclick={() => (showSetup = true)}>Set up AI</button>
+        {/if}
+        {#if busy}
+          <button type="button" class="abort" onclick={() => void abort()}>Stop</button>
+        {/if}
+        <button type="submit" disabled={busy || !draft.trim()}>Send</button>
+      </div>
+    </form>
+  {/if}
 </div>
 
 <style>
@@ -123,7 +235,38 @@
   .badge {
     font-size: 0.7rem;
     color: var(--zw-muted);
-    text-transform: lowercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .banner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--zw-border);
+    background: color-mix(in srgb, var(--zw-brand) 12%, var(--zw-chrome));
+  }
+
+  .banner p {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--zw-text);
+  }
+
+  .setup-btn,
+  .ghost {
+    align-self: flex-start;
+    height: 32px;
+    padding: 0 0.85rem;
+    border-radius: 6px;
+    border: 1px solid var(--zw-border);
+    background: var(--zw-solid);
+    color: var(--zw-text);
+    font-weight: 600;
+    cursor: pointer;
   }
 
   .collapse {
@@ -132,15 +275,18 @@
     height: 32px;
     display: grid;
     place-items: center;
-    border: 1px solid var(--zw-accent-dim);
-    border-radius: 6px;
-    background: var(--zw-accent-dim);
+    border: 1px solid var(--zw-border);
+    border-radius: 8px;
+    background: #0b0d10;
     color: #fff;
     cursor: pointer;
+    padding: 0;
+    overflow: hidden;
   }
 
   .collapse:hover {
-    filter: brightness(1.12);
+    border-color: color-mix(in srgb, var(--zw-brand) 50%, var(--zw-border));
+    filter: brightness(1.08);
   }
 
   .thread {
@@ -165,6 +311,10 @@
     border-color: var(--zw-accent-dim);
   }
 
+  .bubble.streaming {
+    border-color: color-mix(in srgb, var(--zw-brand) 35%, var(--zw-border));
+  }
+
   .role {
     display: block;
     font-size: 0.68rem;
@@ -179,6 +329,17 @@
     white-space: pre-wrap;
     line-height: 1.45;
     font-size: 0.9rem;
+  }
+
+  .cursor {
+    animation: blink 1s step-end infinite;
+    color: var(--zw-accent);
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
   }
 
   .composer {
@@ -203,8 +364,18 @@
     outline: 1px solid var(--zw-accent);
   }
 
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .actions .ghost {
+    margin-right: auto;
+  }
+
   button {
-    align-self: flex-end;
     height: 34px;
     padding: 0 1rem;
     border-radius: 6px;
@@ -213,6 +384,12 @@
     color: #041018;
     font-weight: 600;
     cursor: pointer;
+  }
+
+  button.abort {
+    background: transparent;
+    border: 1px solid var(--zw-border);
+    color: var(--zw-text);
   }
 
   button:disabled {

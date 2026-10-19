@@ -29,10 +29,10 @@ Evaluates task intent, privacy level, latency need, and battery/thermal status (
 2. **Free cloud** — OpenRouter free routes / Groq / Google AI Studio free tier  
 3. **Frontier cloud** — user-selected or escalated BYOK providers  
 
-### Local engine (OpenJarvis)
+### Local engine (OpenJarvis / Ollama)
 
-- Hardware auto-probing (RAM / VRAM / GPU)  
-- Local LLMs (Ollama / llama.cpp)  
+- Hardware auto-probing (RAM / VRAM / GPU) from Electron main  
+- Local LLMs via **HTTP** to Ollama and/or OpenJarvis OpenAI-compatible serve (not a bundled Python process)  
 - SQLite vector & FTS5 index  
 - MCP tool connectors  
 
@@ -52,7 +52,7 @@ Evaluates task intent, privacy level, latency need, and battery/thermal status (
 - **Default companion mode:** Browser collapsed; AI chat + tools fill a strip **docked to the right**.  
 - **Main browser pane (optional):** Electron `WebContentsView` when user expands (“Show Browser”); Chromium extension compatibility target.  
 - **Sidebar AI pane:** Default visible in companion mode; collapsible to an icon rail; streams tokens.  
-- **Docked OS mode:** Windows `SHAppBarMessage` AppBar reserves work area so other windows maximize/tile beside the strip (PC primary). macOS uses always-on-top overlay only — the OS does not expose work-area reservation to third-party apps. Shared shell on both platforms.
+- **Docked OS mode:** Windows `SHAppBarMessage` AppBar reserves work area so other windows **maximize / fullscreen / snap** beside the strip (PC primary). Free (restored) windows may still be dragged under the strip — same as dragging off-screen; that is allowed. macOS uses always-on-top overlay only — the OS does not expose work-area reservation to third-party apps. Shared shell on both platforms. Already-maximized apps may need one restore+maximize to pick up a newly reserved work area.
 
 ### 2. Hybrid AI router & power management
 

@@ -1,4 +1,5 @@
-import { BrowserWindow, WebContentsView } from 'electron'
+import { BrowserWindow, WebContentsView, session, type WebContents } from 'electron'
+import { isHttpUrl } from './navGuard'
 
 export type ChromeLayout = {
   toolbarHeight: number
@@ -6,7 +7,27 @@ export type ChromeLayout = {
   rightChrome: number
 }
 
-const DEFAULT_TOOLBAR = 48
+const DEFAULT_TOOLBAR = 56
+const BROWSER_PARTITION = 'persist:browser'
+/** Electron grants every permission by default; allow only these. */
+const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen'])
+
+function hardenBrowserContents(contents: WebContents): void {
+  const ses = session.fromPartition(BROWSER_PARTITION)
+  ses.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(ALLOWED_PERMISSIONS.has(permission))
+  })
+  ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission))
+
+  // Popups open in the same view instead of spawning new windows.
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isHttpUrl(url)) void contents.loadURL(url)
+    return { action: 'deny' }
+  })
+  contents.on('will-navigate', (event, url) => {
+    if (!isHttpUrl(url)) event.preventDefault()
+  })
+}
 
 /**
  * Browser surface as WebContentsView beside Svelte chrome.
@@ -25,9 +46,12 @@ export class BrowserViewManager {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true
+        sandbox: true,
+        // Untrusted web content: isolate cookies/storage from app chrome.
+        partition: BROWSER_PARTITION
       }
     })
+    hardenBrowserContents(this.view.webContents)
     this.view.webContents.loadURL('https://example.com')
     this.relayout()
     this.win.on('resize', () => this.relayout())

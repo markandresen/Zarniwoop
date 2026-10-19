@@ -24,19 +24,19 @@ function writeVault(data: VaultFile): void {
   writeFileSync(vaultPath(), JSON.stringify(data, null, 2), 'utf8')
 }
 
+// No plaintext fallback: refuse to store or read keys without OS encryption.
 function encrypt(value: string): string {
   if (!safeStorage.isEncryptionAvailable()) {
-    return Buffer.from(value, 'utf8').toString('base64')
+    throw new Error('OS encryption unavailable')
   }
   return safeStorage.encryptString(value).toString('base64')
 }
 
 function decrypt(encoded: string): string {
-  const buf = Buffer.from(encoded, 'base64')
   if (!safeStorage.isEncryptionAvailable()) {
-    return buf.toString('utf8')
+    throw new Error('OS encryption unavailable')
   }
-  return safeStorage.decryptString(buf)
+  return safeStorage.decryptString(Buffer.from(encoded, 'base64'))
 }
 
 export function registerVaultIpc(): void {
@@ -45,6 +45,9 @@ export function registerVaultIpc(): void {
     const key = String(payload?.key ?? '')
     if (!provider || !key) {
       return { ok: false, error: 'provider and key required' }
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      return { ok: false, error: 'Secure storage unavailable on this system; key not saved' }
     }
     const vault = readVault()
     vault[provider] = encrypt(key)

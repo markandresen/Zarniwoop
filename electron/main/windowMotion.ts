@@ -14,26 +14,59 @@ function easeOutCubic(t: number): number {
 
 function companionBounds(win: BrowserWindow): Rectangle {
   const current = win.getBounds()
-  const { workArea } = screen.getDisplayMatching(current)
-  const width = Math.min(COMPANION_WIDTH, Math.floor(workArea.width * 0.32))
+  // Full monitor bounds for x — workArea excludes AppBar strip and insets the window.
+  const { bounds: monitor, workArea } = screen.getDisplayMatching(current)
+  const width = Math.min(COMPANION_WIDTH, Math.floor(monitor.width * 0.32))
   return {
-    x: workArea.x + workArea.width - width,
+    x: monitor.x + monitor.width - width,
     y: workArea.y,
     width,
     height: workArea.height
   }
 }
 
-export function iconDockBounds(win: BrowserWindow): Rectangle {
+export function iconDockBounds(
+  win: BrowserWindow,
+  yFraction = 0.5
+): Rectangle {
   const current = win.getBounds()
-  const { workArea } = screen.getDisplayMatching(current)
+  const { bounds: monitor, workArea } = screen.getDisplayMatching(current)
   const size = ICON_DOCK_SIZE
+  const frac = Number.isFinite(yFraction) ? Math.min(1, Math.max(0, yFraction)) : 0.5
+  const travel = Math.max(0, workArea.height - size)
   return {
-    x: workArea.x + workArea.width - size - ICON_DOCK_MARGIN,
-    y: workArea.y + Math.round(workArea.height / 2 - size / 2),
+    x: monitor.x + monitor.width - size - ICON_DOCK_MARGIN,
+    y: workArea.y + Math.round(travel * frac),
     width: size,
     height: size
   }
+}
+
+/** Clamp icon dock to right edge; Y stays inside work area. */
+export function iconDockBoundsAtY(
+  win: BrowserWindow | null,
+  screenY: number
+): Rectangle {
+  const anchor =
+    win && !win.isDestroyed()
+      ? win.getBounds()
+      : screen.getPrimaryDisplay().bounds
+  const { bounds: monitor, workArea } = screen.getDisplayMatching(anchor)
+  const size = ICON_DOCK_SIZE
+  const minY = workArea.y
+  const maxY = workArea.y + Math.max(0, workArea.height - size)
+  return {
+    x: monitor.x + monitor.width - size - ICON_DOCK_MARGIN,
+    y: Math.round(Math.min(maxY, Math.max(minY, screenY))),
+    width: size,
+    height: size
+  }
+}
+
+export function iconDockYFraction(bounds: Rectangle): number {
+  const { workArea } = screen.getDisplayMatching(bounds)
+  const travel = Math.max(1, workArea.height - bounds.height)
+  return Math.min(1, Math.max(0, (bounds.y - workArea.y) / travel))
 }
 
 function workspaceBounds(win: BrowserWindow): Rectangle {

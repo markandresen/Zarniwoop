@@ -39,5 +39,5 @@ On launch the app is a **right-docked AI companion** (not a full dual-pane works
 
 - **Default:** browser collapsed — only AI chat + tools visible, docked to the **right** edge.  
 - **Expand:** “Show Browser” opens dual-pane (`WebContentsView` + AI).  
-- **Docking:** Windows AppBar (`SHAppBarMessage`) reserves work area; macOS overlay only (no OS work-area API).  
+- **Docking:** Windows AppBar (`SHAppBarMessage`) reserves work area so maximize/fullscreen stops beside the strip (free windows may still drag under); macOS overlay only (no OS work-area API).  
 - **Dashboard widgets** (tasks, mail, notes): Phase 4.

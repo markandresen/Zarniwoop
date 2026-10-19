@@ -21,7 +21,7 @@ Phase 4 (W10-12): Polish & Release  <---  Phase 3 (W7-9): Automation
 
 ## Phase 2 — Hybrid AI router & engines (weeks 4–6)
 
-- Embed OpenJarvis in main process (local models + VRAM probe).  
+- Wire local engine from Electron main over **HTTP** to Ollama (`:11434/v1`) and optional OpenJarvis serve (`:8000/v1`); probe RAM/VRAM — do **not** bundle Python OpenJarvis inside the app.  
 - Node OpenAI-compatible gateway: free providers + frontier BYOK.  
 - Hybrid router: **free-first** (local → free cloud → frontier opt-in), plus battery-aware throttling hooks.  
 - Svelte 5 chat sidebar with streaming tokens; model picker lists full catalog.  

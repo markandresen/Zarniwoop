@@ -1,7 +1,14 @@
-import { resolve } from 'node:path'
+import { homedir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
+
+// Dropbox locks rename inside the repo → Vite deps optimize fails (EBUSY) → blank window.
+const viteCacheDir = join(
+  process.env.LOCALAPPDATA || join(homedir(), '.cache'),
+  'zarniwoop-vite'
+)
 
 export default defineConfig({
   main: {
@@ -30,6 +37,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src',
+    cacheDir: viteCacheDir,
     build: {
       rollupOptions: {
         input: {

@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -91,4 +91,49 @@ export function registerMemoryIpc(): void {
       return { ok: true, id }
     }
   )
+}
+
+export function getSetting(key: string): string | null {
+  if (!db) return null
+  const stmt = db.prepare(`SELECT value FROM settings WHERE key = $key`)
+  stmt.bind({ $key: key })
+  let value: string | null = null
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { value?: string }
+    value = typeof row.value === 'string' ? row.value : null
+  }
+  stmt.free()
+  return value
+}
+
+export function setSetting(key: string, value: string): void {
+  if (!db) return
+  db.run(
+    `INSERT INTO settings (key, value) VALUES ($key, $value)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    { $key: key, $value: value }
+  )
+  persist()
+}
+
+function broadcastSetting(key: string, value: string): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    win.webContents.send('settings:changed', { key, value })
+  }
+}
+
+export function registerSettingsIpc(): void {
+  ipcMain.handle('settings:get', (_event, key: string) => {
+    return getSetting(String(key ?? ''))
+  })
+
+  ipcMain.handle('settings:set', (_event, payload: { key: string; value: string }) => {
+    const key = String(payload?.key ?? '')
+    const value = String(payload?.value ?? '')
+    if (!key) return { ok: false, error: 'Missing key' }
+    setSetting(key, value)
+    broadcastSetting(key, value)
+    return { ok: true, key, value }
+  })
 }
