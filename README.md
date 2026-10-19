@@ -1,6 +1,6 @@
 # Zarniwoop
 
-Desktop workspace shell: embedded browser + AI sidebar companion.
+Desktop workspace shell: embedded browser + AI sidebar companion. (Work In-progress)
 
 **Product / architecture truth:** [`project_plan/`](project_plan/README.md)  
 **Version truth:** Git (this repo). Dropbox only syncs the folder across machines.
