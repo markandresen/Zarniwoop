@@ -23,7 +23,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "@types/node": "^22.16.5",
     "@untitledui/icons": "^0.0.22",
-    "electron": "^43.3.0",
+    "electron": "^43.8.1",
     "electron-vite": "^4.0.0",
     "svelte": "^5.36.12",
     "svelte-check": "^4.3.0",
